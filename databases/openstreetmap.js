@@ -1,3 +1,5 @@
+// TODO: Not entirely sure of the direction for this
+
 var Promise = require('bluebird');
 var request = require('superagent');
 var fandlebars = require('fandlebars');
