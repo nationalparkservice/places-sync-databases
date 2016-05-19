@@ -19,7 +19,7 @@
   "author": "Jim McAndrew <jim@loc8.us>",
   "license": "Public Domain",
   "main": "index.js",
-  "name": "datawrap2",
+  "name": "places-sync-databases",
   "repository": {
     "type": "git",
     "url": "http://github.com/jimmyrocks/datawrap2"
