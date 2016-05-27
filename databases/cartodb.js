@@ -1,14 +1,14 @@
 var Promise = require('bluebird');
-var fandlebars = require('fandlebars');
 var tools = require('jm-tools');
+var fandlebars = require('fandlebars');
 var CartoDB = require('cartodb');
 
 var format = function (output) {
   // TODO: Clean up the output from this so it's similar to all other outputs
   var result = [];
-  if (output && output.body && output.body.rows) {
-    result = output.body.rows;
-    result.fields = output.body.fields;
+  if (output && output.rows) {
+    result = output.rows;
+    result.fields = output.fields;
   }
   return result;
 };
@@ -24,7 +24,7 @@ var parameterize = function (param, type) {
   var returnValue = "convert_from(decode('";
   // type = type || tools.getDataType(param)
   if (type !== 'text') {
-    returnValue = "'" + param.replace(/\'/g, "''") + (type ? "'::" + type : "'");
+    returnValue = "'" + param.replace(/'/g, "''") + (type ? "'::" + type : "'");
   } else {
     param = unescape(encodeURIComponent(param));
     for (var i = 0; i < param.length; i++) {
@@ -46,71 +46,45 @@ var parameterizeQuery = function (query, params, columns) {
   return fandlebars(query, params);
 };
 
-var sendRequest = function (sql, vars, returnRaw, account, apiKey, attempts) {
+var sendRequest = function (cartoDatabase, query, params, returnRaw, attempts) {
   attempts = attempts || 0;
-  var maxAttempts = 5;
-  return new Promise(function (fulfill, reject) {
-    var cartoDatabase = new CartoDB.SQL({
-      user: account,
-      api_key: apiKey
-    });
-    cartoDatabase.execute(sql, vars, {
+  // var maxAttempts = 5
+  return new Promise(function (resolve, reject) {
+    cartoDatabase.execute(parameterizeQuery(query, params), {}, {
       format: 'json'
     })
       .done(function (response) {
-        fulfill(returnRaw ? response : format(response));
+        resolve(returnRaw ? response : format(response));
       })
       .error(function (err) {
         reject(new Error(JSON.stringify(err, null, 2)));
       });
-  /*    superagent.post(requestPath)
-        .set('Content-Type', 'application/json')
-        .set('Accept', 'application/json')
-        .send({
-          'q': cleanedSql,
-          'api_key': apiKey // connectionConfig.connection.apiKey
-        })
-        .end(function (err, response) {
-          if (err || response.error) {
-            if (response.error && response.error.text && response.error.text.match('query_wait_timeout') && attempts <= maxAttempts) {
-              // Time out error, so we can try again with a wait
-              console.log('Error, so trying again, on attempt:', attempts, 'timeout', 1000 + (attempts * 500))
-              setTimeout(function () {
-                sendRequest(sql, vars, returnRaw, account, apiKey, attempts + 1)
-                  .then(fulfill)
-                  .catch(reject)
-              }, 1000 + (attempts * 500))
-            } else {
-              reject(new Error(JSON.stringify(err || response, null, 2)))
-            }
-          } else {
-            fulfill(returnRaw ? response : format(response))
-          }
-        })
-        */
-  });
+    });
 };
 
 module.exports = function (connectionConfig) {
+  var cartoDatabase = new CartoDB.SQL({
+    user: connectionConfig.connection.account,
+    api_key: connectionConfig.connection.apiKey
+  });
   var returnObject = {
     query: function (query, params, returnRaw, columns) {
-      return new Promise(function (fulfill, reject) {
-        var cleanedSql = parameterizeQuery(query, params, columns);
-        // var requestPath = 'https://' + connectionConfig.connection.account + '.cartodb.com/api/v2/sql'
+      return new Promise(function (resolve, reject) {
 
-        if (cleanedSql.length > 5) {
-          sendRequest(cleanedSql, returnRaw, connectionConfig.connection.account, connectionConfig.connection.apiKey)
-            .then(fulfill)
+        if (query.length > 5) {
+          sendRequest(cartoDatabase, query, params, returnRaw)
+            .then(resolve)
             .catch(reject);
         } else {
-          reject('Query Too Short: (' + cleanedSql.length + ') chars');
+          reject('Query Too Short: (' + query.length + ') chars');
         }
       });
     },
     close: function () {
-      return new Promise(function (fulfill, reject) {
+      return new Promise(function (resolve, reject) {
         // Dummy function, cartodb connections close as soon as the query is done
-        fulfill(true);
+        cartoDatabase = null;
+        resolve(true);
       });
     }
   };
