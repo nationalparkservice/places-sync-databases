@@ -4,13 +4,13 @@
     "email": "james_mcandrew@partner.nps.gov"
   }],
   "dependencies": {
-    "bluebird": "3.3.5",
+    "bluebird": "3.4.0",
     "fandlebars": "git+https://github.com/jimmyrocks/fandlebars#master",
     "jm-tools": "git+https://github.com/jimmyrocks/jm-tools#master",
     "oauth": "0.9.14",
     "pg": "4.5.5",
     "sqlite3": "3.1.4",
-    "superagent": "1.8.3",
+    "superagent": "2.0.0-alpha.3",
     "superagent-oauth": "0.2.3",
     "tape": "4.5.1"
   },
