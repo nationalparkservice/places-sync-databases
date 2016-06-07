@@ -1,86 +1,86 @@
-// TODO: Not entirely sure of the direction for this
-
 var Promise = require('bluebird');
-var request = require('superagent');
-var fandlebars = require('fandlebars');
+var superagent = require('superagent');
 var OAuth = require('oauth').OAuth;
+var sqlite = require('./sqlite');
 var tools = require('jm-tools');
 
 // Oauthify superagent
-require('superagent-oauth')(request);
+require('superagent-oauth')(superagent);
 
-var format = function (output) {
-  // TODO: Clean up the output from this so it's similar to all other outputs
-  return output;
+var loadCache = function (cacheConfig) {
+  return sqlite(cacheConfig).then(function (database) {
+    return {
+      'database': database,
+      'table': cacheConfig.table
+    };
+  });
 };
 
-var initialize = function (connectionConfig) {
-  return new Promise(function (fulfill, reject) {
-    // Create the OAuth Object
-    var oauth = new OAuth(
-      'http://' + connectionConfig.address + 'oauth/request_token',
-      'http://' + connectionConfig.address + 'oauth/access_token',
-      connectionConfig.consumer_key,
-      connectionConfig.consumer_secret, '1.0',
-      null,
-      'HMAC-SHA1'
-    );
-
-    // Get User Details /0.6/user/details
-    request.get(connectionConfig.address + '0.6/user/details.json')
-      .sign(oauth, connectionConfig.access_key, connectionConfig.access_secret)
+var validateUser = function (connection, oauth) {
+  return new Promise(function (resolve, reject) {
+    superagent.get(connection.address + '0.6/user/details.json')
+      .sign(oauth, connection.access_key, connection.access_secret)
       .end(function (err, res) {
         if (!err && res.status === 200) {
-          fulfill({
-            oauth: oauth,
-            user: res.body,
-            connection: connectionConfig
-          });
+          resolve(res.body);
         } else {
-          console.log('^&^&^&^&^&^&^');
-          console.log(err);
-          console.log(connectionConfig);
-          console.log('^&^&^&^&^&^&^');
           reject(new Error(err));
         }
       });
   });
 };
 
+var createOauth = function (connection) {
+  return new OAuth(
+    'http://' + connection.address + 'oauth/request_token',
+    'http://' + connection.address + 'oauth/access_token',
+    connection.consumer_key,
+    connection.consumer_secret,
+    '1.0',
+    null,
+    'HMAC-SHA1');
+};
+
+var initialize = function (source) {
+  var tasks = [{
+    'name': 'OAuth',
+    'description': 'Creates the oauth object',
+    'task': createOauth,
+    'params': [source.connection]
+  }, {
+    'name': 'cacheDb',
+    'description': 'Create and return the cache database',
+    'task': loadCache,
+    'params': [source.connection && source.connection.cache]
+  }, {
+    'name': 'userInfo',
+    'description': 'Tests the OAuth by getting the user info',
+    'task': validateUser,
+    'params': [source.connection, '{{OAuth}}']
+  }];
+
+  tools.iterateTasks(tasks).then(function (results) {
+    return {
+      'oauth': results.OAuth,
+      'user': results.userInfo && results.userInfo.body,
+      'connection': source,
+      'cache': results.cacheDb
+    };
+  });
+};
+
 module.exports = function (connectionConfig) {
   var initializedConnection;
   var returnObject = {
-    query: function (query, updatedRow, primaryKeys, metadata) {
+    query: function () {
+      var that = this;
+      var thoseArgs = arguments;
       return returnObject.verify().then(function (connection) {
-        return new Promise(function (fulfill, reject) {
-          console.log('&&&&&&&&&&&&&&&&&&&&&&&&& This is what i got');
-          console.log(query, updatedRow, primaryKeys, metadata);
-          console.log('&&&&&&&&&&&&&&&&&&&&&&&& ');
-          /*
-          var cleanedSql = fandlebars(query, params);
-          var requestPath = 'https://' + connectionConfig.account + '.cartodb.com/api/v2/sql';
-
-          if (cleanedSql.length > 5) {
-            request .post(requestPath)
-              .set('Content-Type', 'application/json')
-              .set('Accept', 'application/json')
-              .send({
-                'q': cleanedSql,
-                'api_key': connectionConfig.apiKey
-              })
-              .end(function (err, response) {
-                if (err || response.error) {
-                  reject(new Error(JSON.stringify(err || response, null, 2)));
-                } else {
-                  fulfill(returnRaw ? response : format(response));
-                }
-              });
-          } else {
-            reject('Query Too Short: (' + cleanedSql.length + ') chars');
-          }
-          */
-          reject('stopping here');
-        });
+        if (connection.cache) {
+          return connection.cache.query.apply(that, thoseArgs);
+        } else {
+          return tools.dummyPromise(null, 'No cache specified for query');
+        }
       });
     },
     verify: function () {
@@ -96,9 +96,10 @@ module.exports = function (connectionConfig) {
     },
     close: function () {
       return returnObject.verify().then(function (connection) {
-        return new Promise(function (fulfill, reject) {
+        initializedConnection = null;
+        return new Promise(function (resolve, reject) {
           // Dummy function, cartodb connections close as soon as the query is done
-          fulfill(true);
+          resolve(true);
         });
       });
     }
