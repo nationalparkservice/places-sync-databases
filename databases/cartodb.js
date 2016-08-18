@@ -47,8 +47,6 @@ var parameterizeQuery = function (query, params, columns) {
 };
 
 var sendRequest = function (cartoDatabase, query, params, returnRaw, attempts) {
-  attempts = attempts || 0;
-  // var maxAttempts = 5
   return new Promise(function (resolve, reject) {
     cartoDatabase.execute(parameterizeQuery(query, params), {}, {
       format: 'json'
