@@ -6,7 +6,7 @@
     }
   ],
   "dependencies": {
-    "bluebird": "3.4.1",
+    "bluebird": "3.4.3",
     "cartodb": "0.5.1",
     "fandlebars": "git+https://github.com/jimmyrocks/fandlebars#master",
     "jm-tools": "git+https://github.com/jimmyrocks/jm-tools#master",
