@@ -47,6 +47,7 @@ var parameterizeQuery = function (query, params, columns) {
 };
 
 var sendRequest = function (cartoDatabase, query, params, returnRaw, attempts) {
+  attempts = attempts || 0;
   return new Promise(function (resolve, reject) {
     cartoDatabase.execute(parameterizeQuery(query, params), {}, {
       format: 'json'
@@ -55,7 +56,12 @@ var sendRequest = function (cartoDatabase, query, params, returnRaw, attempts) {
         resolve(returnRaw ? response : format(response));
       })
       .error(function (err) {
-        reject(new Error(JSON.stringify(err, null, 2)));
+        if (attempts < 3) {
+          console.log('trying again', attempts);
+          sendRequest(cartoDatabase, query, params, returnRaw, attempts++).then(resolve).catch(reject);
+        } else {
+          reject(new Error(JSON.stringify(err, null, 2)));
+        }
       });
     });
 };
