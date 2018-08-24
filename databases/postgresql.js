@@ -51,7 +51,7 @@ module.exports = function (sourceConfig) {
           params = newParams.params;
         }
 
-        var pool = pg(connectionString);
+        var pool = new pg(connectionString);
         pool.connect(function (err, client, done) {
           if (err) {
             done();
