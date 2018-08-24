@@ -58,7 +58,8 @@ var sendRequest = function (cartoDatabase, query, params, returnRaw, attempts) {
       .error(function (err) {
         if (attempts < 3) {
           console.log('trying again', attempts);
-          sendRequest(cartoDatabase, query, params, returnRaw, attempts++).then(resolve).catch(reject);
+          attempts += 1;
+          sendRequest(cartoDatabase, query, params, returnRaw, attempts).then(resolve).catch(reject);
         } else {
           reject(new Error(JSON.stringify(err, null, 2)));
         }
