@@ -51,11 +51,11 @@ module.exports = function (sourceConfig) {
           params = newParams.params;
         }
 
-        var pool = new pg(connectionString);
+        var pool = new pg.Pool(connectionString);
         pool.connect(function (err, client, done) {
           if (err) {
             done();
-            pg.end();
+            pool.end();
             error = new Error(err.message + '\n\terrno: ' + err.errno + '\n\tcode: ' + err.code + '\n\tQuery: ' + query + '\n\tParams: ' + params.toString() + '\n');
             error.stack = err.stack + newStack.stack.replace(/^Error\n/, '\n');
             error.errno = err.errno;
@@ -64,7 +64,7 @@ module.exports = function (sourceConfig) {
           } else {
             client.query(query, params, function (e, result) {
               done();
-              pg.end();
+              pool.end();
               if (e) {
                 error = new Error(e.message + '\n\terrno: ' + e.errno + '\n\tcode: ' + e.code + '\n\tQuery: ' + query + '\n\tParams: ' + JSON.stringify(params) + '\n');
                 error.stack = e.stack + newStack.stack.replace(/^Error\n/, '\n');
@@ -85,8 +85,9 @@ module.exports = function (sourceConfig) {
         // client pools terminate. Any currently open, checked out clients will
         // still need to be returned to the pool before they will be shut down
         // and disconnected.
+        // DOES NOTHING NOW?
 
-        fulfill(pg.end());
+        fulfill();
       });
     }
   };
