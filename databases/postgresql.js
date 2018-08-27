@@ -37,7 +37,7 @@ var readParams = function (rawQuery, objParams) {
 
 module.exports = function (sourceConfig) {
   var connectionConfig = sourceConfig.connection;
-  var connectionString = fandlebars('postgres://{{user}}:{{password}}@{{host}}' + (connectionConfig.port ? ':{{port}}' : '') + '/{{database}}', connectionConfig);
+  // var connectionString = fandlebars('postgres://{{user}}:{{password}}@{{host}}' + (connectionConfig.port ? ':{{port}}' : '') + '/{{database}}', connectionConfig);
   var returnObject = {
     query: function (query, params, returnRaw) {
       return new Promise(function (fulfill, reject) {
@@ -51,7 +51,7 @@ module.exports = function (sourceConfig) {
           params = newParams.params;
         }
 
-        var pool = new pg.Pool(connectionString);
+        var pool = new pg.Pool(connectionConfig);
         pool.connect(function (err, client, done) {
           if (err) {
             done();
